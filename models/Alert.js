@@ -4,7 +4,7 @@ const alertSchema = new mongoose.Schema({
   deviceId: {
     type: String,
     required: true,
-  }, // The MAC address
+  },
   wearerId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
@@ -26,7 +26,7 @@ const alertSchema = new mongoose.Schema({
   resolved: {
     type: Boolean,
     default: false,
-  }, // Has a family member acknowledged it?
+  }, 
   resolvedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",

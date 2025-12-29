@@ -1,52 +1,123 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
+const Alert = require('../models/Alert'); // Added Alert model
 const admin = require('../config/firebase');
 
-// Register or Sync User (Called on Android login)
 router.post('/sync-user', async (req, res) => {
-  const { idToken, fcmToken } = req.body; // Receive token from client
+    const { idToken, fcmToken } = req.body;
 
-  try {
-    // 1. Verify the Google ID Token
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const { uid, email, name } = decodedToken;
+    try {
+        const decodedToken = await admin.auth().verifyIdToken(idToken, true);
+        const { uid, email, name } = decodedToken;
 
-    // 2. Sync with MongoDB
-    let user = await User.findOne({ firebaseUid: uid });
-    if (!user) {
-      user = new User({ firebaseUid: uid, email, name, fcmToken });
-    } else {
-      user.fcmToken = fcmToken;
+        let user = await User.findOne({ firebaseUid: uid });
+        
+        if (!user) {
+            user = new User({ firebaseUid: uid, email, name, fcmToken });
+        } else {
+            user.fcmToken = fcmToken;
+        }
+        await user.save();
+        
+        // 1. Initial population of the basic wearer details
+        const tempUser = await User.findOne({ firebaseUid: uid })
+            .populate({
+                path: 'monitoring.wearer', 
+                populate: { path: 'myWearable' } 
+            })
+            .populate('myWearable');
+
+        // 2. SEARCH FOR ACTIVE ALERTS for each monitored person
+        // This is the specific logic that makes the Android cards expand
+        const monitoringWithAlerts = await Promise.all(tempUser.monitoring.map(async (item) => {
+            const activeAlert = await Alert.findOne({ 
+                wearerId: item.wearer._id, 
+                resolved: false 
+            }).sort({ timestamp: -1 }); // Get the most recent unresolved alert
+
+            return {
+                wearer: item.wearer,
+                nickname: item.nickname,
+                activeAlert: activeAlert // This field must exist for Android to show buttons
+            };
+        }));
+
+        // 3. Prepare the final response
+        const populatedUser = tempUser.toObject();
+        populatedUser.monitoring = monitoringWithAlerts;
+
+        console.log(`User ${user.email} synced with FCM Token: ${user.fcmToken ? 'YES' : 'NO'}`);
+        res.status(200).json(populatedUser);
+
+    } catch (err) {
+        console.error("Sync Error:", err.message);
+        res.status(401).json({ error: "Unauthorized: " + err.message });
     }
-    await user.save();
-    
-    res.status(200).json(user);
-  } catch (err) {
-    res.status(401).json({ error: "Unauthorized: " + err.message });
-  }
 });
 
-// ADD CAREGIVER: Called by Family App after scanning Wearer's App QR
 router.post('/add-caregiver', async (req, res) => {
-  const { wearerUid, caregiverUid } = req.body;
+    const { wearerUid, caregiverUid } = req.body;
+    try {
+        const wearer = await User.findOne({ firebaseUid: wearerUid });
+        const caregiver = await User.findOne({ firebaseUid: caregiverUid });
 
-  try {
-    const wearer = await User.findOne({ firebaseUid: wearerUid });
-    const caregiver = await User.findOne({ firebaseUid: caregiverUid });
+        if (!wearer || !caregiver) return res.status(404).json({error: "User not found"});
 
-    if (!wearer || !caregiver) return res.status(404).send("User not found");
+        const alreadyMonitoring = caregiver.monitoring.some(
+            (m) => m.wearer.toString() === wearer._id.toString()
+        );
 
-    // Add wearer to caregiver's monitoring list
-    if (!caregiver.monitoring.includes(wearer._id)) {
-      caregiver.monitoring.push(wearer._id);
-      await caregiver.save();
+        if (!alreadyMonitoring) {
+            caregiver.monitoring.push({ 
+                wearer: wearer._id, 
+                nickname: "" 
+            });
+            await caregiver.save();
+        }
+        res.status(200).json({ message: "Linked successfully" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
+});
 
-    res.status(200).json({ message: "You are now monitoring " + wearer.name });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+router.post('/update-role', async (req, res) => {
+    try {
+        const { role, firebaseUid, phoneNumber } = req.body; 
+        const updateData = { role: role };
+        
+        if (phoneNumber) {
+            updateData.phoneNumber = phoneNumber;
+        }
+
+        const user = await User.findOneAndUpdate(
+            { firebaseUid: firebaseUid },
+            { $set: updateData },
+            { new: true }
+        );
+        res.status(200).json(user);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/rename-wearer', async (req, res) => {
+    const { caregiverUid, wearerId, newNickname } = req.body;
+    try {
+        const caregiver = await User.findOne({ firebaseUid: caregiverUid });
+        if (!caregiver) return res.status(404).send("Caregiver not found");
+
+        const entry = caregiver.monitoring.find(m => m.wearer.toString() === wearerId);
+        if (entry) {
+            entry.nickname = newNickname;
+            await caregiver.save();
+            res.status(200).json({ message: "Renamed successfully" });
+        } else {
+            res.status(404).send("Wearer not found in list");
+        }
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
 });
 
 module.exports = router;

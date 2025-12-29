@@ -13,22 +13,26 @@ const userSchema = new mongoose.Schema({
   name: {
     type: String,
   },
+  phoneNumber: {
+    type: String,
+    default: ""
+  },
   role: {
     type: String,
     enum: ["wearer", "caregiver"],
-    default: "caregiver",
+    default: null,
   },
   fcmToken: {
     type: String,
-  }, // Token from Android app
+  },
   myWearable: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Device",
   }, // For Wearer
   monitoring: [
     {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      wearer: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      nickname: { type: String, default: "" } // "Dad", "Mom", etc.
     },
   ], // For Caregiver
 });

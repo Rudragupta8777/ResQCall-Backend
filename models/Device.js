@@ -5,7 +5,7 @@ const deviceSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
-  }, // MAC Address
+  }, 
   secretPin: {
     type: String,
     required: true,

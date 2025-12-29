@@ -2,43 +2,70 @@ const express = require("express");
 const router = express.Router();
 const Device = require("../models/Device");
 const User = require("../models/User");
-const Alert = require("../models/Alert"); // Added this
+const Alert = require("../models/Alert"); 
 const { sendFallAlert } = require("../services/notification");
 
 router.post("/fall", async (req, res) => {
-  const { deviceId, lat, lon, battery } = req.body;
+    const { deviceId, lat, lon, battery } = req.body;
 
-  try {
-    const device = await Device.findOne({ deviceId }).populate("owner");
-    if (!device || !device.owner)
-      return res.status(404).send("Device not mapped to a user");
+    try {
+        const device = await Device.findOne({ deviceId }).populate("owner");
+        if (!device || !device.owner) return res.status(404).send("Device not mapped");
 
-    // 1. Save to Alert History
-    const newAlert = await Alert.create({
-      deviceId,
-      wearerId: device.owner._id,
-      location: { lat, lon },
-    });
+        const wearerPhone = device.owner.phoneNumber || ""; 
 
-    // 2. Find caregivers and send FCM
-    const caregivers = await User.find({ monitoring: device.owner._id });
-    const tokens = caregivers.map((c) => c.fcmToken).filter((t) => t);
+        const newAlert = new Alert({
+            deviceId,
+            wearerId: device.owner._id,
+            location: { lat, lon }
+        });
+        await newAlert.save();
 
-    if (tokens.length > 0) {
-      await sendFallAlert(tokens, device.owner.name, lat, lon);
+        const caregivers = await User.find({ "monitoring.wearer": device.owner._id });
+
+        const notificationPromises = caregivers.map(async (caregiver) => {
+            if (!caregiver.fcmToken) return;
+
+            const monitoringEntry = caregiver.monitoring.find(
+                (m) => m.wearer.toString() === device.owner._id.toString()
+            );
+            
+            const displayName = (monitoringEntry && monitoringEntry.nickname) 
+                                ? monitoringEntry.nickname 
+                                : device.owner.name;
+
+            return sendFallAlert(caregiver.fcmToken, displayName, lat, lon, wearerPhone);
+        });
+
+        await Promise.all(notificationPromises);
+
+        res.status(200).json({ message: "Alert Recorded and Sent", alertId: newAlert._id });
+    } catch (err) {
+        console.error("Database Error:", err);
+        res.status(500).json({ error: err.message });
     }
+});
 
-    // 3. Update device status
-    device.lastHeartbeat = Date.now();
-    device.batteryLevel = battery;
-    await device.save();
+router.post("/resolve", async (req, res) => {
+    const { alertId } = req.body;
+    try {
+        // Update the alert status
+        const alert = await Alert.findByIdAndUpdate(
+            alertId,
+            { resolved: true },
+            { new: true }
+        );
 
-    res
-      .status(200)
-      .json({ message: "Alert Recorded and Sent", alertId: newAlert._id });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+        if (!alert) return res.status(404).send("Alert not found");
+
+        // IMPORTANT: Tell all connected apps to "shrink" the card via Socket
+        const io = req.app.get('socketio');
+        io.emit('alert_resolved', { wearerId: alert.wearerId });
+
+        res.status(200).json({ message: "Alert resolved successfully" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 module.exports = router;
