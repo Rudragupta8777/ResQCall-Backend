@@ -28,13 +28,13 @@ const userSchema = new mongoose.Schema({
   myWearable: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Device",
-  }, // For Wearer
+  }, 
   monitoring: [
     {
       wearer: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-      nickname: { type: String, default: "" } // "Dad", "Mom", etc.
+      nickname: { type: String, default: "" } 
     },
-  ], // For Caregiver
+  ],
 });
 
 module.exports = mongoose.model("User", userSchema);

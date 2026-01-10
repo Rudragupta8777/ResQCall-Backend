@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
-const Alert = require('../models/Alert'); // Added Alert model
+const Alert = require('../models/Alert'); 
 const admin = require('../config/firebase');
 
 router.post('/sync-user', async (req, res) => {
@@ -20,7 +20,6 @@ router.post('/sync-user', async (req, res) => {
         }
         await user.save();
         
-        // 1. Initial population of the basic wearer details
         const tempUser = await User.findOne({ firebaseUid: uid })
             .populate({
                 path: 'monitoring.wearer', 
@@ -28,18 +27,16 @@ router.post('/sync-user', async (req, res) => {
             })
             .populate('myWearable');
 
-        // 2. SEARCH FOR ACTIVE ALERTS for each monitored person
-        // This is the specific logic that makes the Android cards expand
         const monitoringWithAlerts = await Promise.all(tempUser.monitoring.map(async (item) => {
             const activeAlert = await Alert.findOne({ 
                 wearerId: item.wearer._id, 
                 resolved: false 
-            }).sort({ timestamp: -1 }); // Get the most recent unresolved alert
+            }).sort({ timestamp: -1 });
 
             return {
                 wearer: item.wearer,
                 nickname: item.nickname,
-                activeAlert: activeAlert // This field must exist for Android to show buttons
+                activeAlert: activeAlert 
             };
         }));
 

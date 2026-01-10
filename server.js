@@ -35,11 +35,6 @@ io.on("connection", (socket) => {
     socket.join(mongoId); 
   });
 
-  // LOGIC FOR HARDWARE PING (Coming from your /api/device/ping route)
-  // When the device pings the API, you should do:
-  // const io = req.app.get('socketio');
-  // io.to(deviceId).emit('device_status', { battery: batteryLevel });
-
   socket.on("disconnect", (reason) => {
     console.log(`❌ App disconnected: ${socket.id} (Reason: ${reason})`);
   });

@@ -8,7 +8,7 @@ exports.sendFallAlert = async (token, displayName, lat, lon, wearerPhone) => {
       lat: lat.toString(),
       lon: lon.toString(),
       wearerName: displayName,
-      wearerPhone: wearerPhone.toString(), // Add this to the data payload
+      wearerPhone: wearerPhone.toString(), 
       title: "🚨 EMERGENCY: Fall Detected!",
       body: `${displayName} needs help immediately!`,
     },
@@ -19,7 +19,6 @@ exports.sendFallAlert = async (token, displayName, lat, lon, wearerPhone) => {
   return admin.messaging().send(message);
 };
 
-// --- NORMAL PRIORITY BATTERY REMINDER ---
 exports.sendBatteryReminder = async (tokens, wearerName, level) => {
   const message = {
     notification: {
@@ -32,9 +31,9 @@ exports.sendBatteryReminder = async (tokens, wearerName, level) => {
     },
     tokens: tokens,
     android: {
-      priority: "normal", // Non-emergency, battery-efficient delivery
+      priority: "normal",
       notification: { 
-        channel_id: "reminder_channel", // App should handle this quietly
+        channel_id: "reminder_channel", 
         icon: "ic_battery_alert" 
       },
     },
