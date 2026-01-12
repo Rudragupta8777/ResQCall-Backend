@@ -116,4 +116,24 @@ router.post('/rename-wearer', async (req, res) => {
     }
 });
 
+router.delete('/remove-wearer', async (req, res) => {
+    const { caregiverUid, wearerId } = req.body;
+    try {
+        const result = await User.findOneAndUpdate(
+            { firebaseUid: caregiverUid },
+            { $pull: { monitoring: { wearer: wearerId } } },
+            { new: true }
+        );
+
+        if (!result) {
+            return res.status(404).json({ error: "Caregiver not found" });
+        }
+
+        res.status(200).json({ message: "Wearer removed from monitoring list successfully" });
+    } catch (err) {
+        console.error("Remove Wearer Error:", err.message);
+        res.status(500).json({ error: "Failed to remove wearer" });
+    }
+});
+
 module.exports = router;

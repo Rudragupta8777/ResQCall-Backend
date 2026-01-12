@@ -68,4 +68,19 @@ router.post("/resolve", async (req, res) => {
     }
 });
 
+router.get("/history/:wearerId", async (req, res) => {
+    try {
+        const { wearerId } = req.params;
+
+        const history = await Alert.find({ wearerId: wearerId })
+            .sort({ timestamp: -1 })
+            .populate("resolvedBy", "name email");
+
+        res.status(200).json(history);
+    } catch (err) {
+        console.error("History Fetch Error:", err.message);
+        res.status(500).json({ error: "Failed to fetch alert history" });
+    }
+});
+
 module.exports = router;
