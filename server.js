@@ -5,6 +5,7 @@ const connectDB = require("./config/db");
 const emergencyRoutes = require("./routes/emergency");
 const authRoutes = require("./routes/auth");
 const deviceRoutes = require("./routes/device");
+const { validateApiKey } = require("./middlewares/auth");
 
 const app = express();
 const server = http.createServer(app);
@@ -19,6 +20,8 @@ const io = new Server(server, {
 });
 
 app.use(express.json());
+app.use(validateApiKey);
+
 connectDB();
 
 app.set("socketio", io);

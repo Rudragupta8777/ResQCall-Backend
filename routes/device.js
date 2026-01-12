@@ -1,32 +1,34 @@
 const express = require('express');
 const router = express.Router();
+const { validateApiKey, validateBody, schemas } = require("../middlewares/auth");
 const Device = require('../models/Device');
 const User = require('../models/User');
-const { sendBatteryReminder } = require('../services/notification');
 
-router.post('/pair', async (req, res) => {
-  const { deviceId, secretPin, firebaseUid } = req.body;
-  try {
-    const device = await Device.findOne({ deviceId, secretPin });
-    if (!device) return res.status(404).json({ error: "Invalid Device ID or PIN" });
-    if (device.owner) return res.status(400).json({ error: "Device already paired" });
+router.use(validateApiKey);
 
-    const user = await User.findOne({ firebaseUid });
-    if (!user) return res.status(404).json({ error: "User not found" });
+router.post('/pair', validateBody(schemas.pair), async (req, res) => {
+    const { deviceId, secretPin, firebaseUid } = req.body;
+    try {
+        const device = await Device.findOne({ deviceId, secretPin });
+        if (!device) return res.status(404).json({ error: "Invalid Device ID or PIN" });
+        if (device.owner) return res.status(400).json({ error: "Device already paired" });
 
-    device.owner = user._id;
-    user.myWearable = device._id;
-    user.role = 'wearer';
+        const user = await User.findOne({ firebaseUid });
+        if (!user) return res.status(404).json({ error: "User not found" });
 
-    await device.save();
-    await user.save();
-    res.status(200).json({ message: "ResQcall paired successfully!" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+        device.owner = user._id;
+        user.myWearable = device._id;
+        user.role = 'wearer';
+
+        await device.save();
+        await user.save();
+        res.status(200).json({ message: "ResQcall paired successfully!" });
+    } catch (err) {
+        res.status(500).json({ error: "Pairing process failed" });
+    }
 });
 
-router.post('/ping', async (req, res) => {
+router.post('/ping', validateBody(schemas.ping), async (req, res) => {
   const { deviceId, battery } = req.body;
 
   try {

@@ -40,7 +40,6 @@ router.post('/sync-user', async (req, res) => {
             };
         }));
 
-        // 3. Prepare the final response
         const populatedUser = tempUser.toObject();
         populatedUser.monitoring = monitoringWithAlerts;
 
