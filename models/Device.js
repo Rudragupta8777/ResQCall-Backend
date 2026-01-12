@@ -5,7 +5,7 @@ const deviceSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
-  }, 
+  },
   secretPin: {
     type: String,
     required: true,
@@ -22,6 +22,14 @@ const deviceSchema = new mongoose.Schema({
   batteryLevel: {
     type: Number,
     default: 0,
+  },
+  lastBatteryAlertSent: {
+    type: Date,
+    default: null,
+  },
+  isOfflineAlertSent: {
+    type: Boolean,
+    default: false,
   },
 });
 module.exports = mongoose.model("Device", deviceSchema);
