@@ -4,7 +4,7 @@ Express + MongoDB backend for the ResQcall fall-detection/wearable device system
 
 ## Authentication
 
-All routes below (`/api/emergency/*` and `/api/device/*`) require an API key via request header:
+All routes below (`/api/emergency/*`, `/api/device/*`, and `/api/caregiver/*`) require an API key via request header:
 
 ```
 x-api-key: <API_KEY>
@@ -49,7 +49,18 @@ Device pairing and heartbeat/battery monitoring. All routes require `x-api-key`.
 | Method | Path | Description |
 |---|---|---|
 | POST | `/pair` | Pairs a physical device to a user, given `deviceId`, `secretPin`, and `firebaseUid` (validated by `schemas.pair`). Fails if the PIN doesn't match, the device is already paired, or the user doesn't exist. Sets the device's `owner` and the user's `myWearable`, and promotes the user's `role` to `wearer`. |
-| POST | `/ping` | Device heartbeat, sent periodically with `deviceId` and `battery` (validated by `schemas.ping`). Updates `lastHeartbeat`, `batteryLevel`, and clears the offline-alert flag. Sends low-battery push notifications (≤10%: wearer + caregivers; <20%: wearer only) at most once per hour. Emits a Socket.io `device_status` (`online`) event to the owner's room for live UI updates. |
+| POST | `/ping` | Device heartbeat, sent periodically with `deviceId`, `battery`, `lat`, `lon`, and `vitals_log` (array of BPM readings). Updates `lastHeartbeat`, `batteryLevel`, and `lastLocation`. Processes vitals into `DailyVitals`, flagging anomalies (`bradycardia_low`, `tachycardia_high`). Sends low-battery push notifications. Emits a Socket.io `device_status` event with battery, location, and latest BPM. Returns `{ status: "success", command: "charge_warning" \| "none" }`. |
+
+---
+
+## `/api/caregiver` — [routes/caregiver.js](routes/caregiver.js)
+
+Clinical reporting and location tracking for caregivers. All routes require `x-api-key`.
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/location/:wearerId` | Returns the `lastLocation` (`lat`, `lon`, `updatedAt`) and `deviceId` for a specific wearer. |
+| GET | `/vitals/:wearerId?range=today\|week\|month` | Returns clinical vitals reports. `today` includes the full `readings` array for detailed charting. `week` and `month` strip the raw data for speed, returning daily `stats` (min/max/avg) and precise `criticalEvents` anomaly timestamps. |
 
 ---
 
@@ -71,11 +82,12 @@ Events the server emits into a wearer's room:
 
 | Event | Emitted when |
 |---|---|
-| `device_status` | Device pings in (`online`, with battery) or is detected offline by the cron job (`offline`). |
+| `device_status` | Device pings in (`online`, with battery, and optional `lat`, `lon`, latest `bpm`) or is detected offline by the cron job (`offline`). |
 | `alert_resolved` | A caregiver resolves an active fall alert via `/api/emergency/resolve`. |
 
 ## Data models
 
 - **[User](models/User.js)** — Firebase-linked account; has a `role` (wearer/caregiver), `fcmToken`, optional `myWearable` device, and a `monitoring` list of wearers (with nicknames) for caregivers.
-- **[Device](models/Device.js)** — Physical wearable; has `deviceId`, `secretPin`, `owner`, battery/heartbeat/alert-sent tracking fields.
+- **[Device](models/Device.js)** — Physical wearable; has `deviceId`, `secretPin`, `owner`, `lastLocation`, and battery/heartbeat/alert-sent tracking fields.
 - **[Alert](models/Alert.js)** — A fall event; has `deviceId`, `wearerId`, `location`, `resolved`/`resolvedBy`, `timestamp`.
+- **[DailyVitals](models/DailyVitals.js)** — Clinical-grade time-series data bucket. Stores one document per wearer per day containing aggregated `stats`, exact `criticalEvents` timestamps, and raw `readings`.

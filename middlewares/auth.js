@@ -24,7 +24,15 @@ const schemas = {
     }),
     ping: Joi.object({
         deviceId: Joi.string().required(),
-        battery: Joi.number().min(0).max(100).required()
+        battery: Joi.number().min(0).max(100).required(),
+        lat: Joi.number().min(-90).max(90).optional(),
+        lon: Joi.number().min(-180).max(180).optional(),
+        vitals_log: Joi.array().items(
+            Joi.object({
+                bpm: Joi.number().required(),
+                timestamp: Joi.date().iso().required()
+            })
+        ).optional()
     })
 };
 

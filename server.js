@@ -6,6 +6,7 @@ const connectDB = require("./config/db");
 const emergencyRoutes = require("./routes/emergency");
 const authRoutes = require("./routes/auth");
 const deviceRoutes = require("./routes/device");
+const caregiverRoutes = require("./routes/caregiver");
 const { validateApiKey } = require("./middlewares/auth");
 
 
@@ -32,6 +33,7 @@ app.set("socketio", io);
 app.use("/api/emergency", emergencyRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/device", deviceRoutes);
+app.use("/api/caregiver", caregiverRoutes);
 
 
 // Runs every 5 minutes
