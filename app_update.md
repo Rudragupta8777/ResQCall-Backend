@@ -86,3 +86,39 @@ The existing `device_status` Socket.io event has been enriched. When a device pi
   "bpm": 75            // NEW (The very last reading from the batch)
 }
 ```
+
+---
+
+## 3. Emergency Alert Resolution Updates
+
+The `POST /api/emergency/resolve` endpoint and its related endpoints have been updated to track and broadcast exactly *who* resolved an alert.
+
+### 🛡️ `POST /api/emergency/resolve`
+The frontend must now pass the caregiver's Firebase UID (`caregiverUid`) instead of the internal MongoDB ID. This saves you from having to query the backend for the `_id` before resolving.
+
+**Request:**
+```json
+{
+  "alertId": "6aca6a0...",
+  "caregiverUid": "NbPJo6jK5terCqDGWYJC7lsxn0r1" // Use Firebase UID!
+}
+```
+
+### 📡 Updated `alert_resolved` Socket.io Event
+When an alert is successfully resolved, the server broadcasts an `alert_resolved` event to the wearer's room. This payload has been enriched to include the exact `alertId` and the populated `resolvedBy` user details, so all other caregivers' screens can update instantly with the resolver's name.
+
+**New Payload structure:**
+```json
+{
+  "alertId": "6aca6a0...",
+  "wearerId": "69d7e13...",
+  "resolvedBy": {
+    "_id": "69d7e13...",
+    "name": "Sarah Connor",
+    "email": "sarah.connor@example.com"
+  }
+}
+```
+
+### 📜 `GET /api/emergency/history/:wearerId`
+Any resolved alerts fetched from the history endpoint will now automatically populate the `resolvedBy` object exactly like the socket payload above.

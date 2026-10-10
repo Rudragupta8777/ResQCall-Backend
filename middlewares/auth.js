@@ -24,6 +24,10 @@ const schemas = {
         secretPin: Joi.string().length(6).required(), 
         firebaseUid: Joi.string().required()
     }),
+    resolve: Joi.object({
+        alertId: Joi.string().required(),
+        caregiverUid: Joi.string().required()
+    }),
     ping: Joi.object({
         deviceId: Joi.string().required(),
         battery: Joi.number().min(0).max(100).required(),

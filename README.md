@@ -37,7 +37,7 @@ Fall alert lifecycle. All routes require `x-api-key`.
 | Method | Path | Description |
 |---|---|---|
 | POST | `/fall` | **Core emergency endpoint.** Device reports a fall with `deviceId`, `lat`, `lon`, `battery`, and an optional `original_timestamp` (validated by `schemas.fall`). Supports **Store-and-Forward Idempotency**: if an alert already exists with the exact `original_timestamp`, it ignores the duplicate and returns 200 OK without spamming push notifications. Otherwise, looks up the device's owner, creates an `Alert` record, and pushes a fall notification (via FCM) to caregivers. |
-| POST | `/resolve` | Marks an `Alert` as `resolved` (recording `resolvedBy` caregiver), then emits a Socket.io `alert_resolved` event to the room for that wearer so connected caregiver apps update live. |
+| POST | `/resolve` | Marks an `Alert` as `resolved` by accepting `alertId` and a Firebase `caregiverUid`. Updates the alert to record the internal `resolvedBy` caregiver, and emits a rich `alert_resolved` Socket.io event containing the alert ID and resolver details. |
 | GET | `/history/:wearerId` | Returns all alerts for a given wearer, newest first, with `resolvedBy` populated (name/email). |
 
 ---
@@ -83,7 +83,7 @@ Events the server emits into a wearer's room:
 | Event | Emitted when |
 |---|---|
 | `device_status` | Device pings in (`online`, with battery, and optional `lat`, `lon`, latest `bpm`) or is detected offline by the cron job (`offline`). |
-| `alert_resolved` | A caregiver resolves an active fall alert via `/api/emergency/resolve`. |
+| `alert_resolved` | A caregiver resolves an active fall alert via `/api/emergency/resolve`. The payload includes `alertId`, `wearerId`, and the populated `resolvedBy` object (name/email) so all connected apps instantly show who resolved it. |
 
 ## Data models
 

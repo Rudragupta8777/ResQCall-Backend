@@ -66,21 +66,30 @@ router.post("/fall", validateBody(schemas.fall), async (req, res) => {
     }
 });
 
-router.post("/resolve", async (req, res) => {
-    const { alertId, caregiverId } = req.body; 
+router.post("/resolve", validateBody(schemas.resolve), async (req, res) => {
+    const { alertId, caregiverUid } = req.body; 
     try {
+        const caregiver = await User.findOne({ firebaseUid: caregiverUid });
+        if (!caregiver) return res.status(404).json({ error: "Caregiver not found" });
+
         const alert = await Alert.findByIdAndUpdate(
             alertId,
-            { resolved: true, resolvedBy: caregiverId },
+            { resolved: true, resolvedBy: caregiver._id },
             { new: true }
-        );
+        ).populate("resolvedBy", "name email");
 
-        if (!alert) return res.status(404).send("Alert not found");
+        if (!alert) return res.status(404).json({ error: "Alert not found" });
 
         const io = req.app.get('socketio');
-        io.to(alert.wearerId.toString()).emit('alert_resolved', { wearerId: alert.wearerId });
+        
+        // Let all caregivers know WHO resolved it immediately
+        io.to(alert.wearerId.toString()).emit('alert_resolved', { 
+            alertId: alert._id,
+            wearerId: alert.wearerId,
+            resolvedBy: alert.resolvedBy // Contains { _id, name, email }
+        });
 
-        res.status(200).json({ message: "Alert resolved successfully" });
+        res.status(200).json({ message: "Alert resolved successfully", alert });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
