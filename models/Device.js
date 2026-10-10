@@ -31,5 +31,10 @@ const deviceSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  lastLocation: {
+    lat: { type: Number },
+    lon: { type: Number },
+    updatedAt: { type: Date }
+  },
 });
 module.exports = mongoose.model("Device", deviceSchema);

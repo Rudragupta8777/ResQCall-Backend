@@ -2,13 +2,14 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Alert = require('../models/Alert'); 
-const admin = require('../config/firebase');
+const admin = require('../config/firebase'); // Keep the var just in case
+const { getAuth } = require('firebase-admin/auth');
 
 router.post('/sync-user', async (req, res) => {
     const { idToken, fcmToken } = req.body;
 
     try {
-        const decodedToken = await admin.auth().verifyIdToken(idToken, true);
+        const decodedToken = await getAuth().verifyIdToken(idToken, true);
         const { uid, email, name } = decodedToken;
 
         let user = await User.findOne({ firebaseUid: uid });

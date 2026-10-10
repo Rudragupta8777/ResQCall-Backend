@@ -1,4 +1,4 @@
-const admin = require("firebase-admin");
+const { initializeApp, cert } = require("firebase-admin/app");
 
 // Use environment variable in production, fall back to local file in development
 let serviceAccount;
@@ -8,8 +8,8 @@ if (process.env.FIREBASE_SERVICE_ACCOUNT) {
   serviceAccount = require("../serviceAccountKey.json");
 }
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
+const app = initializeApp({
+  credential: cert(serviceAccount),
 });
 
-module.exports = admin;
+module.exports = app;
