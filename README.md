@@ -36,7 +36,7 @@ Fall alert lifecycle. All routes require `x-api-key`.
 
 | Method | Path | Description |
 |---|---|---|
-| POST | `/fall` | **Core emergency endpoint.** Device reports a fall with `deviceId`, `lat`, `lon`, `battery` (validated by `schemas.fall`). Looks up the device's owner, creates an `Alert` record, finds all caregivers monitoring that wearer, and pushes a fall notification (via FCM, `sendFallAlert`) to each caregiver with the wearer's nickname/name, location, and phone number. |
+| POST | `/fall` | **Core emergency endpoint.** Device reports a fall with `deviceId`, `lat`, `lon`, `battery`, and an optional `original_timestamp` (validated by `schemas.fall`). Supports **Store-and-Forward Idempotency**: if an alert already exists with the exact `original_timestamp`, it ignores the duplicate and returns 200 OK without spamming push notifications. Otherwise, looks up the device's owner, creates an `Alert` record, and pushes a fall notification (via FCM) to caregivers. |
 | POST | `/resolve` | Marks an `Alert` as `resolved` (recording `resolvedBy` caregiver), then emits a Socket.io `alert_resolved` event to the room for that wearer so connected caregiver apps update live. |
 | GET | `/history/:wearerId` | Returns all alerts for a given wearer, newest first, with `resolvedBy` populated (name/email). |
 

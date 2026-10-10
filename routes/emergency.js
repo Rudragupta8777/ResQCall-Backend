@@ -9,18 +9,36 @@ const { validateApiKey, validateBody, schemas } = require("../middlewares/auth")
 router.use(validateApiKey);
 
 router.post("/fall", validateBody(schemas.fall), async (req, res) => {
-    const { deviceId, lat, lon, battery } = req.body;
+    const { deviceId, lat, lon, battery, original_timestamp } = req.body;
 
     try {
         const device = await Device.findOne({ deviceId }).populate("owner");
         if (!device || !device.owner) return res.status(404).json({ error: "Device not mapped" });
+
+        const alertTime = original_timestamp ? new Date(original_timestamp) : new Date();
+
+        // 🛡️ IDEMPOTENCY CHECK: Did we already process this exact fall event?
+        const existingAlert = await Alert.findOne({
+            deviceId,
+            timestamp: alertTime
+        });
+
+        if (existingAlert) {
+            // Already processed! Return 200 so the ESP32 flushes its retry queue, 
+            // but do NOT send another push notification.
+            return res.status(200).json({ 
+                message: "Alert already recorded", 
+                alertId: existingAlert._id 
+            });
+        }
 
         const wearerPhone = device.owner.phoneNumber || ""; 
 
         const newAlert = new Alert({
             deviceId,
             wearerId: device.owner._id,
-            location: { lat, lon }
+            location: { lat, lon },
+            timestamp: alertTime
         });
         await newAlert.save();
 

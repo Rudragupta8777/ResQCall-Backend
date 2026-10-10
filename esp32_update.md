@@ -31,3 +31,30 @@ The server will now return a `command` attribute that the ESP32 can act upon. Fo
   "command": "none" // Changes to "charge_warning" if battery < 15%
 }
 ```
+
+---
+
+## `POST /api/emergency/fall`
+This endpoint now supports **Store-and-Forward Idempotency**. If the device loses internet connection, you can save the JSON payload to SPIFFS and safely loop retries.
+
+The backend will check the exact `original_timestamp`. If it matches an alert we already recorded, we return a `200 OK` (so you can clear your retry queue) but we will *not* send a duplicate push notification.
+
+**Request Payload:**
+```json
+{
+  "deviceId": "ESP_123",
+  "lat": 12.9716,
+  "lon": 79.1594,
+  "battery": 41,
+  "type": "fall_detected",                       // NEW (Optional)
+  "original_timestamp": "2026-10-10T19:10:05Z"   // NEW (Optional but highly recommended for retries)
+}
+```
+
+**Response Payload (Success or Ignored Duplicate):**
+```json
+{
+  "message": "Alert Recorded", // Or "Alert already recorded" if duplicate
+  "alertId": "651f9b..."
+}
+```

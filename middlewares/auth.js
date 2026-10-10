@@ -15,7 +15,9 @@ const schemas = {
         deviceId: Joi.string().required(),
         lat: Joi.number().min(-90).max(90).required(),
         lon: Joi.number().min(-180).max(180).required(),
-        battery: Joi.number().min(0).max(100).required()
+        battery: Joi.number().min(0).max(100).required(),
+        type: Joi.string().optional(),
+        original_timestamp: Joi.date().iso().optional()
     }),
     pair: Joi.object({
         deviceId: Joi.string().required(),
