@@ -47,8 +47,8 @@ cron.schedule('*/5 * * * *', async () => {
   }).populate('owner');
 
   for (let device of silentDevices) {
-    const lastAlert = await Alert.findOne({ wearerId: device.owner._id }).sort({ timestamp: -1 });
-    const location = lastAlert ? lastAlert.location : { lat: 0, lon: 0 };
+    // Use the latest tracked GPS coordinate, defaulting to 0,0 if unknown
+    const location = device.lastLocation ? device.lastLocation : { lat: 0, lon: 0 };
 
     const caregivers = await User.find({ "monitoring.wearer": device.owner._id });
     const tokens = caregivers.map(c => c.fcmToken).filter(t => t);
