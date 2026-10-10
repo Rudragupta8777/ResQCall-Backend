@@ -1,4 +1,5 @@
-const admin = require("../config/firebase");
+require("../config/firebase");
+const { getMessaging } = require("firebase-admin/messaging");
 
 exports.sendFallAlert = async (token, displayName, lat, lon, wearerPhone) => {
   const message = {
@@ -16,7 +17,7 @@ exports.sendFallAlert = async (token, displayName, lat, lon, wearerPhone) => {
       priority: "high",
     },
   };
-  return admin.messaging().send(message);
+  return getMessaging().send(message);
 };
 
 // Handle Battery Alerts 
@@ -32,7 +33,7 @@ exports.sendBatteryReminder = async (tokens, wearerName, level, target) => {
     data: { type: "BATTERY_LOW", level: level.toString() },
     tokens: tokens,
   };
-  return admin.messaging().sendEachForMulticast(message);
+  return getMessaging().sendEachForMulticast(message);
 };
 
 // Handle Offline Alert
@@ -50,5 +51,5 @@ exports.sendOfflineAlert = async (tokens, wearerName, lastLocation) => {
     },
     tokens: tokens,
   };
-  return admin.messaging().sendEachForMulticast(message);
+  return getMessaging().sendEachForMulticast(message);
 };
